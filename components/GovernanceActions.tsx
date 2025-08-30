@@ -148,38 +148,33 @@ export default function GovernanceActions({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-2">
-        <Coins className="w-6 h-6 text-green-400" />
-        <h2 className="text-2xl font-bold text-foreground">
-          Governance Actions
-        </h2>
-      </div>
-
-             {error && (
-         <Card className="border-red-500/30 bg-red-500/10">
-           <CardContent className="pt-6">
-             <div className="flex items-center space-x-2">
-               <AlertCircle className="w-5 h-5 text-red-400" />
-               <p className="text-red-300">{error}</p>
-             </div>
-             {isRateLimitError({ message: error }) && (
-               <Button
-                 onClick={async () => {
-                   setError('Resetting rate limit, please wait...');
-                   await waitForCircuitBreakerReset();
-                   setError(null);
-                   setSuccess('Rate limit reset successfully. You can now try again.');
-                 }}
-                 variant="outline"
-                 size="sm"
-                 className="mt-3"
-               >
-                 Reset Rate Limit
-               </Button>
-             )}
-           </CardContent>
-         </Card>
-       )}
+      {error && (
+        <Card className="border-red-500/30 bg-red-500/10">
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="w-5 h-5 text-red-400" />
+              <p className="text-red-300">{error}</p>
+            </div>
+            {isRateLimitError({ message: error }) && (
+              <Button
+                onClick={async () => {
+                  setError('Resetting rate limit, please wait...');
+                  await waitForCircuitBreakerReset();
+                  setError(null);
+                  setSuccess(
+                    'Rate limit reset successfully. You can now try again.'
+                  );
+                }}
+                variant="outline"
+                size="sm"
+                className="mt-3"
+              >
+                Reset Rate Limit
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {success && (
         <Card className="border-green-500/30 bg-green-500/10">

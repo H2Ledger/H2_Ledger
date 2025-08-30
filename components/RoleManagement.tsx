@@ -147,11 +147,6 @@ export default function RoleManagement({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-2">
-        <Shield className="w-6 h-6 text-purple-400" />
-        <h2 className="text-2xl font-bold text-foreground">Role Management</h2>
-      </div>
-
       {error && (
         <Card className="border-red-500/30 bg-red-500/10">
           <CardContent className="pt-6">

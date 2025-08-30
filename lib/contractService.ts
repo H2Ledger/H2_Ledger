@@ -67,6 +67,12 @@ export class ContractService {
       const userBatches = await this.contract.getUserBatches(userAddress);
       let totalValue = 0;
 
+      // Handle empty array case gracefully
+      if (!userBatches || userBatches.length === 0) {
+        console.log(`No batches found for user ${userAddress}`);
+        return 0;
+      }
+
       for (const batchId of userBatches) {
         const balance = await this.contract.balanceOf(userAddress, batchId);
         totalValue += Number(balance);

@@ -509,7 +509,7 @@ export default function Dashboard() {
         )}
 
         {/* Role Management Section - Only visible to Governance users */}
-        {contractService && (
+        {contractService && isGovernance && (
           <Card className="glass-card border-border/50 mb-8">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
