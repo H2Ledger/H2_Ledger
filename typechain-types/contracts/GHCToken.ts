@@ -56,7 +56,11 @@ export declare namespace GHCToken {
 export interface GHCTokenInterface extends Interface {
   getFunction(
     nameOrSignature:
+      | "CERTIFIER_ROLE"
+      | "DEFAULT_ADMIN_ROLE"
+      | "GOVERNANCE_ROLE"
       | "MINT_TOKEN"
+      | "PRODUCER_ROLE"
       | "RETIRE_TOKEN"
       | "STATUS_ACTIVE"
       | "STATUS_PARTIAL"
@@ -71,15 +75,19 @@ export interface GHCTokenInterface extends Interface {
       | "getBatchBalance"
       | "getBatchStatusString"
       | "getBatchTotalSupply"
+      | "getRoleAdmin"
       | "getUserBatches"
+      | "getUserRoles"
+      | "grantRole"
+      | "hasRole"
       | "isApprovedForAll"
       | "mintBatch"
       | "mintedSupply"
       | "name"
-      | "owner"
-      | "renounceOwnership"
+      | "renounceRole"
       | "retireBatch"
       | "retiredSupply"
+      | "revokeRole"
       | "safeBatchTransferFrom"
       | "safeTransferFrom"
       | "setApprovalForAll"
@@ -88,7 +96,6 @@ export interface GHCTokenInterface extends Interface {
       | "symbol"
       | "totalSupply"
       | "transferBatch"
-      | "transferOwnership"
       | "uri"
   ): FunctionFragment;
 
@@ -96,7 +103,9 @@ export interface GHCTokenInterface extends Interface {
     nameOrSignatureOrTopic:
       | "ApprovalForAll"
       | "BatchCreated"
-      | "OwnershipTransferred"
+      | "RoleAdminChanged"
+      | "RoleGranted"
+      | "RoleRevoked"
       | "TokensMinted"
       | "TokensRetired"
       | "TokensTransferred"
@@ -106,7 +115,23 @@ export interface GHCTokenInterface extends Interface {
   ): EventFragment;
 
   encodeFunctionData(
+    functionFragment: "CERTIFIER_ROLE",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "DEFAULT_ADMIN_ROLE",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "GOVERNANCE_ROLE",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "MINT_TOKEN",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "PRODUCER_ROLE",
     values?: undefined
   ): string;
   encodeFunctionData(
@@ -166,8 +191,24 @@ export interface GHCTokenInterface extends Interface {
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
+    functionFragment: "getRoleAdmin",
+    values: [BytesLike]
+  ): string;
+  encodeFunctionData(
     functionFragment: "getUserBatches",
     values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getUserRoles",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "grantRole",
+    values: [BytesLike, AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "hasRole",
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "isApprovedForAll",
@@ -182,10 +223,9 @@ export interface GHCTokenInterface extends Interface {
     values: [BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "name", values?: undefined): string;
-  encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "renounceOwnership",
-    values?: undefined
+    functionFragment: "renounceRole",
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "retireBatch",
@@ -194,6 +234,10 @@ export interface GHCTokenInterface extends Interface {
   encodeFunctionData(
     functionFragment: "retiredSupply",
     values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "revokeRole",
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "safeBatchTransferFrom",
@@ -227,13 +271,25 @@ export interface GHCTokenInterface extends Interface {
     functionFragment: "transferBatch",
     values: [BigNumberish, AddressLike, AddressLike, BigNumberish]
   ): string;
-  encodeFunctionData(
-    functionFragment: "transferOwnership",
-    values: [AddressLike]
-  ): string;
   encodeFunctionData(functionFragment: "uri", values: [BigNumberish]): string;
 
+  decodeFunctionResult(
+    functionFragment: "CERTIFIER_ROLE",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "DEFAULT_ADMIN_ROLE",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "GOVERNANCE_ROLE",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "MINT_TOKEN", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "PRODUCER_ROLE",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "RETIRE_TOKEN",
     data: BytesLike
@@ -282,9 +338,19 @@ export interface GHCTokenInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "getRoleAdmin",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "getUserBatches",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(
+    functionFragment: "getUserRoles",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "isApprovedForAll",
     data: BytesLike
@@ -295,9 +361,8 @@ export interface GHCTokenInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "name", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "renounceOwnership",
+    functionFragment: "renounceRole",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -308,6 +373,7 @@ export interface GHCTokenInterface extends Interface {
     functionFragment: "retiredSupply",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "revokeRole", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "safeBatchTransferFrom",
     data: BytesLike
@@ -332,10 +398,6 @@ export interface GHCTokenInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "transferBatch",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "transferOwnership",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "uri", data: BytesLike): Result;
@@ -388,12 +450,57 @@ export namespace BatchCreatedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
-export namespace OwnershipTransferredEvent {
-  export type InputTuple = [previousOwner: AddressLike, newOwner: AddressLike];
-  export type OutputTuple = [previousOwner: string, newOwner: string];
+export namespace RoleAdminChangedEvent {
+  export type InputTuple = [
+    role: BytesLike,
+    previousAdminRole: BytesLike,
+    newAdminRole: BytesLike
+  ];
+  export type OutputTuple = [
+    role: string,
+    previousAdminRole: string,
+    newAdminRole: string
+  ];
   export interface OutputObject {
-    previousOwner: string;
-    newOwner: string;
+    role: string;
+    previousAdminRole: string;
+    newAdminRole: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace RoleGrantedEvent {
+  export type InputTuple = [
+    role: BytesLike,
+    account: AddressLike,
+    sender: AddressLike
+  ];
+  export type OutputTuple = [role: string, account: string, sender: string];
+  export interface OutputObject {
+    role: string;
+    account: string;
+    sender: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace RoleRevokedEvent {
+  export type InputTuple = [
+    role: BytesLike,
+    account: AddressLike,
+    sender: AddressLike
+  ];
+  export type OutputTuple = [role: string, account: string, sender: string];
+  export interface OutputObject {
+    role: string;
+    account: string;
+    sender: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -574,7 +681,15 @@ export interface GHCToken extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
+  CERTIFIER_ROLE: TypedContractMethod<[], [string], "view">;
+
+  DEFAULT_ADMIN_ROLE: TypedContractMethod<[], [string], "view">;
+
+  GOVERNANCE_ROLE: TypedContractMethod<[], [string], "view">;
+
   MINT_TOKEN: TypedContractMethod<[], [bigint], "view">;
+
+  PRODUCER_ROLE: TypedContractMethod<[], [string], "view">;
 
   RETIRE_TOKEN: TypedContractMethod<[], [bigint], "view">;
 
@@ -646,7 +761,23 @@ export interface GHCToken extends BaseContract {
     "view"
   >;
 
+  getRoleAdmin: TypedContractMethod<[role: BytesLike], [string], "view">;
+
   getUserBatches: TypedContractMethod<[_user: AddressLike], [bigint[]], "view">;
+
+  getUserRoles: TypedContractMethod<[_user: AddressLike], [string[]], "view">;
+
+  grantRole: TypedContractMethod<
+    [role: BytesLike, account: AddressLike],
+    [void],
+    "nonpayable"
+  >;
+
+  hasRole: TypedContractMethod<
+    [role: BytesLike, account: AddressLike],
+    [boolean],
+    "view"
+  >;
 
   isApprovedForAll: TypedContractMethod<
     [account: AddressLike, operator: AddressLike],
@@ -664,9 +795,11 @@ export interface GHCToken extends BaseContract {
 
   name: TypedContractMethod<[], [string], "view">;
 
-  owner: TypedContractMethod<[], [string], "view">;
-
-  renounceOwnership: TypedContractMethod<[], [void], "nonpayable">;
+  renounceRole: TypedContractMethod<
+    [role: BytesLike, callerConfirmation: AddressLike],
+    [void],
+    "nonpayable"
+  >;
 
   retireBatch: TypedContractMethod<
     [_batchId: BigNumberish, _quantity: BigNumberish],
@@ -675,6 +808,12 @@ export interface GHCToken extends BaseContract {
   >;
 
   retiredSupply: TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
+
+  revokeRole: TypedContractMethod<
+    [role: BytesLike, account: AddressLike],
+    [void],
+    "nonpayable"
+  >;
 
   safeBatchTransferFrom: TypedContractMethod<
     [
@@ -729,12 +868,6 @@ export interface GHCToken extends BaseContract {
     "nonpayable"
   >;
 
-  transferOwnership: TypedContractMethod<
-    [newOwner: AddressLike],
-    [void],
-    "nonpayable"
-  >;
-
   uri: TypedContractMethod<[_tokenId: BigNumberish], [string], "view">;
 
   getFunction<T extends ContractMethod = ContractMethod>(
@@ -742,8 +875,20 @@ export interface GHCToken extends BaseContract {
   ): T;
 
   getFunction(
+    nameOrSignature: "CERTIFIER_ROLE"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "DEFAULT_ADMIN_ROLE"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "GOVERNANCE_ROLE"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
     nameOrSignature: "MINT_TOKEN"
   ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "PRODUCER_ROLE"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
     nameOrSignature: "RETIRE_TOKEN"
   ): TypedContractMethod<[], [bigint], "view">;
@@ -821,8 +966,28 @@ export interface GHCToken extends BaseContract {
     nameOrSignature: "getBatchTotalSupply"
   ): TypedContractMethod<[_batchId: BigNumberish], [bigint], "view">;
   getFunction(
+    nameOrSignature: "getRoleAdmin"
+  ): TypedContractMethod<[role: BytesLike], [string], "view">;
+  getFunction(
     nameOrSignature: "getUserBatches"
   ): TypedContractMethod<[_user: AddressLike], [bigint[]], "view">;
+  getFunction(
+    nameOrSignature: "getUserRoles"
+  ): TypedContractMethod<[_user: AddressLike], [string[]], "view">;
+  getFunction(
+    nameOrSignature: "grantRole"
+  ): TypedContractMethod<
+    [role: BytesLike, account: AddressLike],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "hasRole"
+  ): TypedContractMethod<
+    [role: BytesLike, account: AddressLike],
+    [boolean],
+    "view"
+  >;
   getFunction(
     nameOrSignature: "isApprovedForAll"
   ): TypedContractMethod<
@@ -844,11 +1009,12 @@ export interface GHCToken extends BaseContract {
     nameOrSignature: "name"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "owner"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "renounceOwnership"
-  ): TypedContractMethod<[], [void], "nonpayable">;
+    nameOrSignature: "renounceRole"
+  ): TypedContractMethod<
+    [role: BytesLike, callerConfirmation: AddressLike],
+    [void],
+    "nonpayable"
+  >;
   getFunction(
     nameOrSignature: "retireBatch"
   ): TypedContractMethod<
@@ -859,6 +1025,13 @@ export interface GHCToken extends BaseContract {
   getFunction(
     nameOrSignature: "retiredSupply"
   ): TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "revokeRole"
+  ): TypedContractMethod<
+    [role: BytesLike, account: AddressLike],
+    [void],
+    "nonpayable"
+  >;
   getFunction(
     nameOrSignature: "safeBatchTransferFrom"
   ): TypedContractMethod<
@@ -917,9 +1090,6 @@ export interface GHCToken extends BaseContract {
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "transferOwnership"
-  ): TypedContractMethod<[newOwner: AddressLike], [void], "nonpayable">;
-  getFunction(
     nameOrSignature: "uri"
   ): TypedContractMethod<[_tokenId: BigNumberish], [string], "view">;
 
@@ -938,11 +1108,25 @@ export interface GHCToken extends BaseContract {
     BatchCreatedEvent.OutputObject
   >;
   getEvent(
-    key: "OwnershipTransferred"
+    key: "RoleAdminChanged"
   ): TypedContractEvent<
-    OwnershipTransferredEvent.InputTuple,
-    OwnershipTransferredEvent.OutputTuple,
-    OwnershipTransferredEvent.OutputObject
+    RoleAdminChangedEvent.InputTuple,
+    RoleAdminChangedEvent.OutputTuple,
+    RoleAdminChangedEvent.OutputObject
+  >;
+  getEvent(
+    key: "RoleGranted"
+  ): TypedContractEvent<
+    RoleGrantedEvent.InputTuple,
+    RoleGrantedEvent.OutputTuple,
+    RoleGrantedEvent.OutputObject
+  >;
+  getEvent(
+    key: "RoleRevoked"
+  ): TypedContractEvent<
+    RoleRevokedEvent.InputTuple,
+    RoleRevokedEvent.OutputTuple,
+    RoleRevokedEvent.OutputObject
   >;
   getEvent(
     key: "TokensMinted"
@@ -1010,15 +1194,37 @@ export interface GHCToken extends BaseContract {
       BatchCreatedEvent.OutputObject
     >;
 
-    "OwnershipTransferred(address,address)": TypedContractEvent<
-      OwnershipTransferredEvent.InputTuple,
-      OwnershipTransferredEvent.OutputTuple,
-      OwnershipTransferredEvent.OutputObject
+    "RoleAdminChanged(bytes32,bytes32,bytes32)": TypedContractEvent<
+      RoleAdminChangedEvent.InputTuple,
+      RoleAdminChangedEvent.OutputTuple,
+      RoleAdminChangedEvent.OutputObject
     >;
-    OwnershipTransferred: TypedContractEvent<
-      OwnershipTransferredEvent.InputTuple,
-      OwnershipTransferredEvent.OutputTuple,
-      OwnershipTransferredEvent.OutputObject
+    RoleAdminChanged: TypedContractEvent<
+      RoleAdminChangedEvent.InputTuple,
+      RoleAdminChangedEvent.OutputTuple,
+      RoleAdminChangedEvent.OutputObject
+    >;
+
+    "RoleGranted(bytes32,address,address)": TypedContractEvent<
+      RoleGrantedEvent.InputTuple,
+      RoleGrantedEvent.OutputTuple,
+      RoleGrantedEvent.OutputObject
+    >;
+    RoleGranted: TypedContractEvent<
+      RoleGrantedEvent.InputTuple,
+      RoleGrantedEvent.OutputTuple,
+      RoleGrantedEvent.OutputObject
+    >;
+
+    "RoleRevoked(bytes32,address,address)": TypedContractEvent<
+      RoleRevokedEvent.InputTuple,
+      RoleRevokedEvent.OutputTuple,
+      RoleRevokedEvent.OutputObject
+    >;
+    RoleRevoked: TypedContractEvent<
+      RoleRevokedEvent.InputTuple,
+      RoleRevokedEvent.OutputTuple,
+      RoleRevokedEvent.OutputObject
     >;
 
     "TokensMinted(uint256,uint256,address)": TypedContractEvent<

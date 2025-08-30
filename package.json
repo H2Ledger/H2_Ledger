@@ -10,6 +10,7 @@
     "setup": "node scripts/setup.js",
     "hardhat:node": "hardhat node",
     "hardhat:deploy": "hardhat run scripts/deploy.js --network localhost",
+    "hardhat:deploy:update": "hardhat run scripts/deploy-and-update.js --network localhost",
     "hardhat:compile": "hardhat compile"
   },
   "dependencies": {

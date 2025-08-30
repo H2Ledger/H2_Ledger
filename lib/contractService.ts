@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import GHCTokenABI from '../artifacts/contracts/GHCToken.sol/GHCToken.json';
+import { withRateLimit, isRateLimitError } from './rateLimit';
 
 export interface GHCBatch {
   id: string;
@@ -9,6 +10,11 @@ export interface GHCBatch {
   status: string;
   issuer: string;
   exists: boolean;
+}
+
+export interface UserRole {
+  address: string;
+  roles: string[];
 }
 
 export interface Transaction {
@@ -39,6 +45,13 @@ export class ContractService {
       GHCTokenABI.abi,
       signer
     );
+
+    console.log('ContractService initialized with:', {
+      contractAddress,
+      provider: !!provider,
+      signer: !!signer,
+      contract: !!this.contract,
+    });
   }
 
   // Get contract instance
@@ -72,17 +85,32 @@ export class ContractService {
     if (!this.contract) throw new Error('Contract not initialized');
 
     try {
-      const userBatches = await this.contract.getUserBatches(userAddress);
+      console.log('Getting user batches for address:', userAddress);
+      console.log('Contract address:', this.contract.target);
+
+      const userBatches = await withRateLimit(
+        () => this.contract!.getUserBatches(userAddress),
+        100
+      );
+      console.log('User batches result:', userBatches);
+
       const batches: GHCBatch[] = [];
 
       for (const batchId of userBatches) {
         try {
-          const batch = await this.contract.getBatch(batchId);
-          const balance = await this.contract.balanceOf(userAddress, batchId);
+          const batch = await withRateLimit(
+            () => this.contract!.getBatch(batchId),
+            50
+          );
+          const balance = await withRateLimit(
+            () => this.contract!.balanceOf(userAddress, batchId),
+            50
+          );
 
           if (Number(balance) > 0) {
-            const statusString = await this.contract!.getBatchStatusString(
-              batchId
+            const statusString = await withRateLimit(
+              () => this.contract!.getBatchStatusString(batchId),
+              50
             );
             batches.push({
               id: batchId.toString(),
@@ -101,8 +129,21 @@ export class ContractService {
       }
 
       return batches;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting user batches:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        code: error?.code,
+        data: error?.data,
+        transaction: error?.transaction,
+      });
+
+      // Check if it's a rate limiting error
+      if (isRateLimitError(error)) {
+        console.log('Rate limit detected, returning empty array');
+        return [];
+      }
+
       // Return empty array instead of throwing
       return [];
     }
@@ -113,26 +154,49 @@ export class ContractService {
     if (!this.contract) throw new Error('Contract not initialized');
 
     try {
-      const batchCounter = await this.contract.batchCounter();
+      const batchCounter = await withRateLimit(
+        () => this.contract!.batchCounter(),
+        100
+      );
       const batches: GHCBatch[] = [];
 
       for (let i = 1; i <= Number(batchCounter); i++) {
-        const batch = await this.contract.getBatch(i);
-        const statusString = await this.contract!.getBatchStatusString(i);
-        batches.push({
-          id: i.toString(),
-          batchId: i,
-          quantity: Number(batch.quantity),
-          issuanceDate: Number(batch.issuanceDate),
-          status: statusString,
-          issuer: batch.issuer,
-          exists: batch.exists,
-        });
+        try {
+          const batch = await withRateLimit(
+            () => this.contract!.getBatch(i),
+            50
+          );
+          const statusString = await withRateLimit(
+            () => this.contract!.getBatchStatusString(i),
+            50
+          );
+          batches.push({
+            id: i.toString(),
+            batchId: i,
+            quantity: Number(batch.quantity),
+            issuanceDate: Number(batch.issuanceDate),
+            status: statusString,
+            issuer: batch.issuer,
+            exists: batch.exists,
+          });
+        } catch (batchError) {
+          console.warn(`Error processing batch ${i}:`, batchError);
+          // Continue with other batches
+        }
       }
 
       return batches;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting all batches:', error);
+
+      // Check if it's a rate limiting error
+      if (isRateLimitError(error)) {
+        console.log(
+          'Rate limit detected in getAllBatches, returning empty array'
+        );
+        return [];
+      }
+
       return [];
     }
   }
@@ -221,36 +285,74 @@ export class ContractService {
   }
 
   // Get transaction history (this would need to be implemented with events)
-  async getTransactionHistory(userAddress: string): Promise<Transaction[]> {
+  async getTransactionHistory(userAddress?: string): Promise<Transaction[]> {
     if (!this.contract || !this.provider)
       throw new Error('Contract or provider not initialized');
 
     try {
+      console.log('Fetching transaction history...');
+
       // Get events from the contract
+      const batchCreatedFilter = this.contract.filters.BatchCreated();
       const mintFilter = this.contract.filters.TokensMinted(
         null,
         null,
-        userAddress
+        userAddress || null
       );
       const transferFilter = this.contract.filters.TokensTransferred(
         null,
         null,
-        userAddress,
+        userAddress || null,
         null
       );
       const retireFilter = this.contract.filters.TokensRetired(
         null,
         null,
-        userAddress
+        userAddress || null
       );
 
-      const [mintEvents, transferEvents, retireEvents] = await Promise.all([
-        this.contract.queryFilter(mintFilter),
-        this.contract.queryFilter(transferFilter),
-        this.contract.queryFilter(retireFilter),
-      ]);
+      console.log('Querying filters...');
+      const [batchEvents, mintEvents, transferEvents, retireEvents] =
+        await Promise.all([
+          this.contract.queryFilter(batchCreatedFilter),
+          this.contract.queryFilter(mintFilter),
+          this.contract.queryFilter(transferFilter),
+          this.contract.queryFilter(retireFilter),
+        ]);
+
+      console.log('Events found:', {
+        batchCreated: batchEvents.length,
+        minted: mintEvents.length,
+        transferred: transferEvents.length,
+        retired: retireEvents.length,
+      });
 
       const transactions: Transaction[] = [];
+
+      // Process batch created events
+      for (const event of batchEvents) {
+        try {
+          const parsed = this.contract!.interface.parseLog(event);
+          if (parsed && parsed.args) {
+            const timestamp = event.blockNumber
+              ? await this.getBlockTimestamp(event.blockNumber)
+              : Date.now();
+
+            transactions.push({
+              id: `batch-${event.blockNumber}-${event.transactionIndex}`,
+              eventType: 'Mint', // Treat batch creation as a mint event
+              tokenId: `GHC-${parsed.args.batchId}`,
+              from: '0x0000000000000000000000000000000000000000',
+              to: parsed.args.issuer,
+              amount: Number(parsed.args.quantity),
+              timestamp,
+              hash: event.transactionHash,
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to parse batch created event:', error);
+        }
+      }
 
       // Process mint events
       for (const event of mintEvents) {
@@ -344,6 +446,91 @@ export class ContractService {
       return block?.timestamp || Date.now();
     } catch {
       return Date.now();
+    }
+  }
+
+  // Role management methods
+  async getUserRoles(userAddress: string): Promise<string[]> {
+    if (!this.contract) throw new Error('Contract not initialized');
+
+    try {
+      return await this.contract.getUserRoles(userAddress);
+    } catch (error) {
+      console.error('Error getting user roles:', error);
+      return [];
+    }
+  }
+
+  async hasRole(role: string, userAddress: string): Promise<boolean> {
+    if (!this.contract) throw new Error('Contract not initialized');
+
+    try {
+      // Get the role hash
+      let roleHash: string;
+      switch (role) {
+        case 'GOVERNANCE_ROLE':
+          roleHash = await withRateLimit(
+            () => this.contract!.GOVERNANCE_ROLE(),
+            100
+          );
+          break;
+        case 'CERTIFIER_ROLE':
+          roleHash = await withRateLimit(
+            () => this.contract!.CERTIFIER_ROLE(),
+            100
+          );
+          break;
+        case 'PRODUCER_ROLE':
+          roleHash = await withRateLimit(
+            () => this.contract!.PRODUCER_ROLE(),
+            100
+          );
+          break;
+        default:
+          roleHash = role;
+      }
+
+      // Check if user has the specific role
+      return await withRateLimit(
+        () => this.contract!.hasRole(roleHash, userAddress),
+        50
+      );
+    } catch (error: any) {
+      console.error('Error checking role:', error);
+
+      // Check if it's a rate limiting error
+      if (isRateLimitError(error)) {
+        console.log('Rate limit detected in role check, returning false');
+        return false;
+      }
+
+      return false;
+    }
+  }
+
+  async grantRole(role: string, userAddress: string): Promise<string> {
+    if (!this.contract) throw new Error('Contract not initialized');
+
+    try {
+      const tx = await this.contract.grantRole(role, userAddress);
+      const receipt = await tx.wait();
+      return receipt.hash;
+    } catch (error) {
+      console.error('Error granting role:', error);
+      throw error;
+    }
+  }
+
+  async revokeRole(role: string, userAddress: string): Promise<string> {
+    if (!this.contract) throw new Error('Contract not initialized');
+
+    try {
+      const tx = await this.contract.revokeRole(role, userAddress);
+      const receipt = await tx.wait();
+      return receipt.hash;
+    } catch (error) {
+      console.error('Error revoking role:', error);
+      throw error;
     }
   }
 }

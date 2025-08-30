@@ -2,15 +2,20 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract GHCToken is ERC1155, Ownable {
+contract GHCToken is ERC1155, AccessControl {
     using Strings for uint256;
 
     // Token metadata
     string public name = "Green Hydrogen Credit";
     string public symbol = "GHC";
+    
+    // Role constants
+    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    bytes32 public constant CERTIFIER_ROLE = keccak256("CERTIFIER_ROLE");
+    bytes32 public constant PRODUCER_ROLE = keccak256("PRODUCER_ROLE");
     
     // Token types
     uint256 public constant MINT_TOKEN = 1;
@@ -50,12 +55,31 @@ contract GHCToken is ERC1155, Ownable {
     event TokensTransferred(uint256 indexed batchId, uint256 quantity, address indexed from, address indexed to);
     event TokensRetired(uint256 indexed batchId, uint256 quantity, address indexed from);
     
-    constructor() ERC1155("") Ownable(msg.sender) {
+    constructor() ERC1155("") {
         _baseURI = "https://api.h2ledger.com/metadata/";
+        
+        // Grant governance role to deployer
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(GOVERNANCE_ROLE, msg.sender);
+        
+        // Grant governance role to test accounts (hardcoded for now)
+        _grantRole(GOVERNANCE_ROLE, 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
+        _grantRole(GOVERNANCE_ROLE, 0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
+        _grantRole(GOVERNANCE_ROLE, 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC);
+        
+        // Grant certifier role to test accounts
+        _grantRole(CERTIFIER_ROLE, 0x90F79bf6EB2c4f870365E785982E1f101E93b906);
+        _grantRole(CERTIFIER_ROLE, 0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65);
+        _grantRole(CERTIFIER_ROLE, 0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc);
+        
+        // Grant producer role to test accounts
+        _grantRole(PRODUCER_ROLE, 0x976EA74026E726554dB657fA54763abd0C3a0aa9);
+        _grantRole(PRODUCER_ROLE, 0x14dC79964da2C08b23698B3D3cc7Ca32193d9955);
+        _grantRole(PRODUCER_ROLE, 0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f);
     }
     
     // Create a new batch
-    function createBatch(uint256 _tokenType, uint256 _quantity) external onlyOwner returns (uint256) {
+    function createBatch(uint256 _tokenType, uint256 _quantity) external onlyRole(GOVERNANCE_ROLE) returns (uint256) {
         require(_quantity > 0, "Quantity must be greater than 0");
         
         batchCounter++;
@@ -76,7 +100,7 @@ contract GHCToken is ERC1155, Ownable {
     }
     
     // Mint tokens for a specific batch
-    function mintBatch(uint256 _batchId, address _to, uint256 _quantity) external onlyOwner {
+    function mintBatch(uint256 _batchId, address _to, uint256 _quantity) external onlyRole(GOVERNANCE_ROLE) {
         require(batches[_batchId].exists, "Batch does not exist");
         require(batches[_batchId].status == STATUS_ACTIVE, "Batch is not active");
         require(_quantity <= batches[_batchId].quantity, "Quantity exceeds batch limit");
@@ -147,8 +171,8 @@ contract GHCToken is ERC1155, Ownable {
         return string(abi.encodePacked(_baseURI, _tokenId.toString()));
     }
     
-    // Set base URI (only owner)
-    function setBaseURI(string memory _newBaseURI) external onlyOwner {
+    // Set base URI (only governance)
+    function setBaseURI(string memory _newBaseURI) external onlyRole(GOVERNANCE_ROLE) {
         _baseURI = _newBaseURI;
     }
     
@@ -174,5 +198,51 @@ contract GHCToken is ERC1155, Ownable {
         }
         
         return userBatches;
+    }
+    
+    // Role management functions (only governance can call)
+    function grantRole(bytes32 role, address account) public override onlyRole(GOVERNANCE_ROLE) {
+        _grantRole(role, account);
+    }
+    
+    function revokeRole(bytes32 role, address account) public override onlyRole(GOVERNANCE_ROLE) {
+        _revokeRole(role, account);
+    }
+    
+    // Check if user has specific role
+    function hasRole(bytes32 role, address account) public view override returns (bool) {
+        return super.hasRole(role, account);
+    }
+    
+    // Get user's roles as strings
+    function getUserRoles(address _user) external view returns (string[] memory) {
+        string[] memory roles = new string[](3);
+        uint256 roleCount = 0;
+        
+        if (hasRole(GOVERNANCE_ROLE, _user)) {
+            roles[roleCount] = "Governance";
+            roleCount++;
+        }
+        if (hasRole(CERTIFIER_ROLE, _user)) {
+            roles[roleCount] = "Certifier";
+            roleCount++;
+        }
+        if (hasRole(PRODUCER_ROLE, _user)) {
+            roles[roleCount] = "Producer";
+            roleCount++;
+        }
+        
+        // Resize array to actual count
+        string[] memory finalRoles = new string[](roleCount);
+        for (uint256 i = 0; i < roleCount; i++) {
+            finalRoles[i] = roles[i];
+        }
+        
+        return finalRoles;
+    }
+    
+    // Override supportsInterface for AccessControl
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155, AccessControl) returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 }

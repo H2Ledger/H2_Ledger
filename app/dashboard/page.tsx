@@ -8,6 +8,8 @@ import {
   History,
   TrendingUp,
   LogOut,
+  Shield,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,9 +18,13 @@ import { formatNumber } from '@/lib/utils';
 import { useWallet } from '@/contexts/WalletContext';
 import { ContractService, GHCBatch } from '@/lib/contractService';
 import { useRouter } from 'next/navigation';
+import RoleManagement from '@/components/RoleManagement';
+import GovernanceActions from '@/components/GovernanceActions';
+import { getContractAddress } from '@/lib/config';
+import { isRateLimitError, waitForCircuitBreakerReset } from '@/lib/rateLimit';
 
-// Contract address - this will be updated after deployment
-const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3'; // Default Hardhat address
+// Get contract address from config
+const CONTRACT_ADDRESS = getContractAddress();
 
 export default function Dashboard() {
   const { account, isConnected, signer, provider, disconnectWallet } =
@@ -49,6 +55,9 @@ export default function Dashboard() {
         setIsLoading(true);
         setError(null);
 
+        // Add delay to prevent rate limiting
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
         // Load portfolio value and user batches
         const [value, batches] = await Promise.all([
           contractService.getPortfolioValue(account),
@@ -57,9 +66,17 @@ export default function Dashboard() {
 
         setPortfolioValue(value);
         setUserBatches(batches);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error loading user data:', err);
-        setError('Failed to load portfolio data. Please try again.');
+
+        // Check if it's a rate limiting error
+        if (isRateLimitError(err)) {
+          setError(
+            'Rate limit reached. Please wait a moment and refresh the page, or click the "Reset Rate Limit" button below.'
+          );
+        } else {
+          setError('Failed to load portfolio data. Please try again.');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -150,20 +167,60 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Welcome Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">
-            Welcome Back, Hydrogen Producer
-          </h1>
-          <p className="text-muted-foreground">
-            Manage your Green Hydrogen Credit portfolio
-          </p>
-        </div>
+                 {/* Welcome Header */}
+         <div className="mb-8">
+           <h1 className="text-3xl font-bold mb-2">
+             Welcome Back, Hydrogen Producer
+           </h1>
+           <p className="text-muted-foreground">
+             Manage your Green Hydrogen Credit portfolio
+           </p>
+         </div>
+
+         {/* Rate Limit Info */}
+         <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+           <div className="flex items-center space-x-2">
+             <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+             <p className="text-blue-300 text-sm">
+               <strong>Tip:</strong> If you encounter "circuit breaker" errors, use the "Reset Rate Limit" button below or wait 5 seconds before retrying.
+             </p>
+           </div>
+         </div>
 
         {/* Error Display */}
         {error && (
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
             <p className="text-red-400 text-sm">{error}</p>
+            {isRateLimitError({ message: error }) && (
+              <Button
+                onClick={async () => {
+                  setError('Resetting rate limit, please wait...');
+                  await waitForCircuitBreakerReset();
+                  setError(null);
+                  // Reload data after reset
+                  if (contractService && account) {
+                    try {
+                      setIsLoading(true);
+                      const [value, batches] = await Promise.all([
+                        contractService.getPortfolioValue(account),
+                        contractService.getUserBatches(account),
+                      ]);
+                      setPortfolioValue(value);
+                      setUserBatches(batches);
+                    } catch (err: any) {
+                      setError('Failed to reload data after rate limit reset.');
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }
+                }}
+                variant="outline"
+                size="sm"
+                className="mt-2"
+              >
+                Reset Rate Limit
+              </Button>
+            )}
           </div>
         )}
 
@@ -191,6 +248,14 @@ export default function Dashboard() {
               <div className="flex space-x-3">
                 <Button
                   className="bg-primary hover:bg-primary/90 rounded-xl"
+                  onClick={() => setSelectedAction('issue')}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Issue Credit
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-border/50 hover:bg-muted/20 rounded-xl"
                   onClick={() => setSelectedAction('transfer')}
                 >
                   <ArrowUpRight className="w-4 h-4 mr-2" />
@@ -203,14 +268,6 @@ export default function Dashboard() {
                 >
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Retire Credit
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-border/50 hover:bg-muted/20 rounded-xl"
-                  onClick={() => setSelectedAction('history')}
-                >
-                  <History className="w-4 h-4 mr-2" />
-                  View History
                 </Button>
               </div>
             </div>
@@ -293,25 +350,75 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Action Modals Placeholder */}
+        {/* Governance Actions Section - Only visible to Governance users */}
+        {contractService && (
+          <Card className="glass-card border-border/50 mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Shield className="w-5 h-5 text-purple-400" />
+                <span>Governance Actions</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <GovernanceActions contractService={contractService} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Role Management Section - Only visible to Governance users */}
+        {contractService && (
+          <Card className="glass-card border-border/50 mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Shield className="w-5 h-5 text-purple-400" />
+                <span>Role Management</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RoleManagement contractService={contractService} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Action Modals */}
         {selectedAction && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="glass-card border-border/50 rounded-2xl p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold mb-4">
-                {selectedAction === 'transfer' && 'Transfer Credits'}
-                {selectedAction === 'retire' && 'Retire Credits'}
-                {selectedAction === 'history' && 'Transaction History'}
-              </h3>
-              <p className="text-muted-foreground mb-6">
-                This feature is coming soon. For now, you can view your
-                portfolio and batch information.
-              </p>
-              <Button
-                onClick={() => setSelectedAction(null)}
-                className="w-full"
-              >
-                Close
-              </Button>
+            <div className="glass-card border-border/50 rounded-2xl p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">
+                  {selectedAction === 'issue' && 'Issue Credits'}
+                  {selectedAction === 'transfer' && 'Transfer Credits'}
+                  {selectedAction === 'retire' && 'Retire Credits'}
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedAction(null)}
+                  className="h-8 w-8 p-0"
+                >
+                  ×
+                </Button>
+              </div>
+
+              {selectedAction === 'issue' && contractService && (
+                <GovernanceActions contractService={contractService} />
+              )}
+
+              {(selectedAction === 'transfer' ||
+                selectedAction === 'retire') && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-6">
+                    This feature is coming soon. For now, you can use the
+                    Governance Actions above to issue credits.
+                  </p>
+                  <Button
+                    onClick={() => setSelectedAction(null)}
+                    className="w-full"
+                  >
+                    Close
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}
