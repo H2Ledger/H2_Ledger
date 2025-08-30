@@ -21,7 +21,7 @@ A decentralized platform for managing Green Hydrogen Credits (GHC) on the blockc
 ### 1. Clone and Install Dependencies
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/H2Ledger/H2_Ledger
 cd H2Ledger
 npm install
 ```
