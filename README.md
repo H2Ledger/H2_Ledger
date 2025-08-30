@@ -235,6 +235,30 @@ For questions or issues:
 - Review the code comments
 - Open an issue on GitHub
 
+## UI Snaps
+
+**1. Main Dashboard**
+![Dashboard](https://i.ibb.co/sdykL6LC/Screenshot-2025-08-30-170937.png)
+
 ---
 
-**Happy coding! 🚀**
+**2. Issue New Credits**
+![Issue New Credits](https://i.ibb.co/LhRrzrGN/issue-new.png)
+
+---
+
+**3. Live Ledger Feed**
+![Live Ledger Feed](https://i.ibb.co/pBX6twxC/live-ledger-feed.png)
+
+---
+
+**4. Portfolio Details**
+![Portfolio Details](https://i.ibb.co/nsk8wvV9/dashboard.png)
+
+---
+
+**5. Settings Page**
+![Settings](https://i.ibb.co/gFTz6pWv/Settings.png)
+---
+
+**Made by Love by Team DireDevs! 🐺🚀**
