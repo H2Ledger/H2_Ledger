@@ -1,99 +1,85 @@
 'use client';
 
-import { useState } from 'react';
-import { Diamond, ArrowUpRight, RotateCcw, History, TrendingUp } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+  Diamond,
+  ArrowUpRight,
+  RotateCcw,
+  History,
+  TrendingUp,
+  LogOut,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { formatNumber } from '@/lib/utils';
+import { useWallet } from '@/contexts/WalletContext';
+import { ContractService, GHCBatch } from '@/lib/contractService';
+import { useRouter } from 'next/navigation';
 
-interface GHCBatch {
-  id: string;
-  batchId: string;
-  quantity: number;
-  issuanceDate: string;
-  status: 'Active' | 'Partial' | 'Retired';
-}
-
-interface Activity {
-  id: string;
-  activity: string;
-  date: string;
-  details: string;
-}
-
-const mockBatches: GHCBatch[] = [
-  {
-    id: '1',
-    batchId: 'Batch 12345',
-    quantity: 100000,
-    issuanceDate: '2023-01-15',
-    status: 'Active'
-  },
-  {
-    id: '2',
-    batchId: 'Batch 67890',
-    quantity: 50000,
-    issuanceDate: '2023-02-20',
-    status: 'Active'
-  },
-  {
-    id: '3',
-    batchId: 'Batch 11223',
-    quantity: 75000,
-    issuanceDate: '2023-03-25',
-    status: 'Partial'
-  },
-  {
-    id: '4',
-    batchId: 'Batch 44556',
-    quantity: 25000,
-    issuanceDate: '2023-04-30',
-    status: 'Active'
-  },
-  {
-    id: '5',
-    batchId: 'Batch 77889',
-    quantity: 150000,
-    issuanceDate: '2023-05-05',
-    status: 'Active'
-  }
-];
-
-const recentActivity: Activity[] = [
-  {
-    id: '1',
-    activity: 'Credit Transfer',
-    date: '2023-06-10',
-    details: 'Transferred 50,000 GHC to Recipient X'
-  },
-  {
-    id: '2',
-    activity: 'Credit Retirement',
-    date: '2023-05-20',
-    details: 'Retired 25,000 GHC'
-  },
-  {
-    id: '3',
-    activity: 'Credit Issuance',
-    date: '2023-05-05',
-    details: 'Issued 150,000 GHC'
-  },
-  {
-    id: '4',
-    activity: 'Credit Transfer',
-    date: '2023-04-15',
-    details: 'Transferred 75,000 GHC to Recipient Y'
-  },
-  {
-    id: '5',
-    activity: 'Credit Retirement',
-    date: '2023-03-20',
-    details: 'Retired 10,000 GHC'
-  }
-];
+// Contract address - this will be updated after deployment
+const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3'; // Default Hardhat address
 
 export default function Dashboard() {
+  const { account, isConnected, signer, provider, disconnectWallet } =
+    useWallet();
+  const router = useRouter();
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
+  const [contractService, setContractService] =
+    useState<ContractService | null>(null);
+  const [portfolioValue, setPortfolioValue] = useState<number>(0);
+  const [userBatches, setUserBatches] = useState<GHCBatch[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Initialize contract service when wallet is connected
+  useEffect(() => {
+    if (isConnected && signer && provider) {
+      const service = new ContractService(CONTRACT_ADDRESS, provider, signer);
+      setContractService(service);
+    }
+  }, [isConnected, signer, provider]);
+
+  // Load user data when contract service is available
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!contractService || !account) return;
+
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Load portfolio value and user batches
+        const [value, batches] = await Promise.all([
+          contractService.getPortfolioValue(account),
+          contractService.getUserBatches(account),
+        ]);
+
+        setPortfolioValue(value);
+        setUserBatches(batches);
+      } catch (err) {
+        console.error('Error loading user data:', err);
+        setError('Failed to load portfolio data. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, [contractService, account]);
+
+  // Redirect if not connected
+  useEffect(() => {
+    if (!isConnected) {
+      router.push('/');
+    }
+  }, [isConnected, router]);
+
+  // Handle disconnect
+  const handleDisconnect = () => {
+    disconnectWallet();
+    router.push('/');
+  };
 
   const getStatusChipClass = (status: string) => {
     switch (status) {
@@ -108,17 +94,57 @@ export default function Dashboard() {
     }
   };
 
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Connecting to wallet...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       {/* Header */}
       <header className="border-b border-border/50 backdrop-blur-sm bg-background/50">
         <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center space-x-3">
-            <Diamond className="w-8 h-8 text-primary" />
-            <span className="text-2xl font-bold">
-              <span className="text-primary">H2</span>
-              <span className="text-white">Ledger</span>
-            </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Diamond className="w-8 h-8 text-primary" />
+              <span className="text-2xl font-bold">
+                <span className="text-primary">H2</span>
+                <span className="text-white">Ledger</span>
+              </span>
+            </div>
+
+            {/* Wallet Info */}
+            <div className="flex items-center space-x-4">
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Connected</p>
+                <p className="font-mono text-sm">
+                  {account?.slice(0, 6)}...{account?.slice(-4)}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDisconnect}
+                className="border-border/50 hover:bg-muted/20"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Disconnect
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -126,9 +152,20 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Welcome Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome Back, Hydrogen Producer</h1>
-          <p className="text-muted-foreground">Manage your Green Hydrogen Credit portfolio</p>
+          <h1 className="text-3xl font-bold mb-2">
+            Welcome Back, Hydrogen Producer
+          </h1>
+          <p className="text-muted-foreground">
+            Manage your Green Hydrogen Credit portfolio
+          </p>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
 
         {/* Portfolio Card */}
         <Card className="glass-card border-border/50 mb-8">
@@ -142,29 +179,33 @@ export default function Dashboard() {
             <div className="flex items-end justify-between">
               <div>
                 <div className="text-5xl font-bold text-primary font-mono mb-2">
-                  1,234,567
+                  {isLoading ? (
+                    <div className="w-32 h-16 bg-muted/30 rounded animate-pulse" />
+                  ) : (
+                    formatNumber(portfolioValue)
+                  )}
                 </div>
                 <div className="text-xl text-muted-foreground">GHC</div>
               </div>
-              
+
               <div className="flex space-x-3">
-                <Button 
+                <Button
                   className="bg-primary hover:bg-primary/90 rounded-xl"
                   onClick={() => setSelectedAction('transfer')}
                 >
                   <ArrowUpRight className="w-4 h-4 mr-2" />
                   Transfer
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="border-border/50 hover:bg-muted/20 rounded-xl"
                   onClick={() => setSelectedAction('retire')}
                 >
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Retire Credit
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="border-border/50 hover:bg-muted/20 rounded-xl"
                   onClick={() => setSelectedAction('history')}
                 >
@@ -182,63 +223,98 @@ export default function Dashboard() {
             <CardTitle>Your GHC Batches</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/30">
-                  <tr>
-                    <th className="text-left py-4 px-4 font-medium text-muted-foreground">Batch ID</th>
-                    <th className="text-left py-4 px-4 font-medium text-muted-foreground">Quantity</th>
-                    <th className="text-left py-4 px-4 font-medium text-muted-foreground">Issuance Date</th>
-                    <th className="text-left py-4 px-4 font-medium text-muted-foreground">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mockBatches.map((batch, index) => (
-                    <tr key={batch.id} className={`hover:bg-muted/20 transition-colors ${index % 2 === 0 ? 'bg-background/30' : ''}`}>
-                      <td className="py-4 px-4 font-medium">{batch.batchId}</td>
-                      <td className="py-4 px-4 font-mono">{batch.quantity.toLocaleString()} GHC</td>
-                      <td className="py-4 px-4 text-muted-foreground">{batch.issuanceDate}</td>
-                      <td className="py-4 px-4">
-                        <Badge className={`status-chip ${getStatusChipClass(batch.status)}`}>
-                          {batch.status}
-                        </Badge>
-                      </td>
+            {isLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-16 bg-muted/30 rounded animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : userBatches.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No GHC batches found</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Your batches will appear here once you receive GHC tokens
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/30">
+                    <tr>
+                      <th className="text-left py-4 px-4 font-medium text-muted-foreground">
+                        Batch ID
+                      </th>
+                      <th className="text-left py-4 px-4 font-medium text-muted-foreground">
+                        Quantity
+                      </th>
+                      <th className="text-left py-4 px-4 font-medium text-muted-foreground">
+                        Issuance Date
+                      </th>
+                      <th className="text-left py-4 px-4 font-medium text-muted-foreground">
+                        Status
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {userBatches.map((batch, index) => (
+                      <tr
+                        key={batch.id}
+                        className={`hover:bg-muted/20 transition-colors ${
+                          index % 2 === 0 ? 'bg-background/30' : ''
+                        }`}
+                      >
+                        <td className="py-4 px-4 font-medium">
+                          Batch {batch.batchId}
+                        </td>
+                        <td className="py-4 px-4 font-mono">
+                          {formatNumber(batch.quantity)} GHC
+                        </td>
+                        <td className="py-4 px-4 text-muted-foreground">
+                          {formatDate(batch.issuanceDate)}
+                        </td>
+                        <td className="py-4 px-4">
+                          <Badge
+                            className={`status-chip ${getStatusChipClass(
+                              batch.status
+                            )}`}
+                          >
+                            {batch.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
-        <Card className="glass-card border-border/50">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/30">
-                  <tr>
-                    <th className="text-left py-4 px-4 font-medium text-muted-foreground">Activity</th>
-                    <th className="text-left py-4 px-4 font-medium text-muted-foreground">Date</th>
-                    <th className="text-left py-4 px-4 font-medium text-muted-foreground">Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentActivity.map((activity, index) => (
-                    <tr key={activity.id} className={`hover:bg-muted/20 transition-colors ${index % 2 === 0 ? 'bg-background/30' : ''}`}>
-                      <td className="py-4 px-4 font-medium">{activity.activity}</td>
-                      <td className="py-4 px-4 text-muted-foreground">{activity.date}</td>
-                      <td className="py-4 px-4 text-sm text-muted-foreground">{activity.details}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* Action Modals Placeholder */}
+        {selectedAction && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="glass-card border-border/50 rounded-2xl p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4">
+                {selectedAction === 'transfer' && 'Transfer Credits'}
+                {selectedAction === 'retire' && 'Retire Credits'}
+                {selectedAction === 'history' && 'Transaction History'}
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                This feature is coming soon. For now, you can view your
+                portfolio and batch information.
+              </p>
+              <Button
+                onClick={() => setSelectedAction(null)}
+                className="w-full"
+              >
+                Close
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        )}
       </main>
     </div>
   );

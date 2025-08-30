@@ -5,6 +5,7 @@ import { Search, Diamond, Bell, User } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { formatNumber } from '@/lib/utils';
 
 interface Transaction {
   id: string;
@@ -24,7 +25,7 @@ const mockTransactions: Transaction[] = [
     from: '0xabc123...',
     to: '0xdef456...',
     amount: 1000,
-    timestamp: '2024-01-15 10:00 AM'
+    timestamp: '2024-01-15 10:00 AM',
   },
   {
     id: '2',
@@ -33,7 +34,7 @@ const mockTransactions: Transaction[] = [
     from: '0xdef456...',
     to: '0xghi789...',
     amount: 500,
-    timestamp: '2024-01-15 11:30 AM'
+    timestamp: '2024-01-15 11:30 AM',
   },
   {
     id: '3',
@@ -42,7 +43,7 @@ const mockTransactions: Transaction[] = [
     from: '0xghi789...',
     to: null,
     amount: 200,
-    timestamp: '2024-01-15 01:00 PM'
+    timestamp: '2024-01-15 01:00 PM',
   },
   {
     id: '4',
@@ -51,7 +52,7 @@ const mockTransactions: Transaction[] = [
     from: '0xuvw012...',
     to: '0xxyz345...',
     amount: 2000,
-    timestamp: '2024-01-16 09:00 AM'
+    timestamp: '2024-01-16 09:00 AM',
   },
   {
     id: '5',
@@ -60,7 +61,7 @@ const mockTransactions: Transaction[] = [
     from: '0xxyz345...',
     to: '0xabc123...',
     amount: 1500,
-    timestamp: '2024-01-16 10:45 AM'
+    timestamp: '2024-01-16 10:45 AM',
   },
   {
     id: '6',
@@ -69,7 +70,7 @@ const mockTransactions: Transaction[] = [
     from: '0xrst678...',
     to: '0xuvw012...',
     amount: 500,
-    timestamp: '2024-01-17 12:00 PM'
+    timestamp: '2024-01-17 12:00 PM',
   },
   {
     id: '7',
@@ -78,7 +79,7 @@ const mockTransactions: Transaction[] = [
     from: '0xuvw012...',
     to: '0xdef456...',
     amount: 250,
-    timestamp: '2024-01-17 02:15 PM'
+    timestamp: '2024-01-17 02:15 PM',
   },
   {
     id: '8',
@@ -87,8 +88,8 @@ const mockTransactions: Transaction[] = [
     from: '0xdef456...',
     to: null,
     amount: 100,
-    timestamp: '2024-01-17 04:30 PM'
-  }
+    timestamp: '2024-01-17 04:30 PM',
+  },
 ];
 
 export default function Explorer() {
@@ -107,10 +108,11 @@ export default function Explorer() {
     }
   };
 
-  const filteredTransactions = mockTransactions.filter(tx =>
-    tx.tokenId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tx.from.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (tx.to && tx.to.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredTransactions = mockTransactions.filter(
+    (tx) =>
+      tx.tokenId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tx.from.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (tx.to && tx.to.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -126,7 +128,7 @@ export default function Explorer() {
                 <span className="text-white">Ledger</span>
               </span>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <Button variant="ghost" size="icon">
                 <Bell className="w-5 h-5" />
@@ -168,30 +170,64 @@ export default function Explorer() {
             <table className="w-full">
               <thead className="bg-muted/30 sticky top-0">
                 <tr>
-                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Event Type</th>
-                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Token ID</th>
-                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">From</th>
-                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">To</th>
-                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Amount</th>
-                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Timestamp</th>
-                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Action</th>
+                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">
+                    Event Type
+                  </th>
+                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">
+                    Token ID
+                  </th>
+                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">
+                    From
+                  </th>
+                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">
+                    To
+                  </th>
+                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">
+                    Amount
+                  </th>
+                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">
+                    Timestamp
+                  </th>
+                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {filteredTransactions.map((tx, index) => (
-                  <tr key={tx.id} className={`hover:bg-muted/20 transition-colors ${index % 2 === 0 ? 'bg-background/30' : ''}`}>
+                  <tr
+                    key={tx.id}
+                    className={`hover:bg-muted/20 transition-colors ${
+                      index % 2 === 0 ? 'bg-background/30' : ''
+                    }`}
+                  >
                     <td className="py-4 px-6">
-                      <Badge className={`status-chip ${getEventChipClass(tx.eventType)}`}>
+                      <Badge
+                        className={`status-chip ${getEventChipClass(
+                          tx.eventType
+                        )}`}
+                      >
                         {tx.eventType}
                       </Badge>
                     </td>
-                    <td className="py-4 px-6 font-mono text-sm">{tx.tokenId}</td>
+                    <td className="py-4 px-6 font-mono text-sm">
+                      {tx.tokenId}
+                    </td>
                     <td className="py-4 px-6 font-mono text-sm">{tx.from}</td>
-                    <td className="py-4 px-6 font-mono text-sm">{tx.to || 'N/A'}</td>
-                    <td className="py-4 px-6 font-semibold">{tx.amount.toLocaleString()}</td>
-                    <td className="py-4 px-6 text-muted-foreground">{tx.timestamp}</td>
+                    <td className="py-4 px-6 font-mono text-sm">
+                      {tx.to || 'N/A'}
+                    </td>
+                    <td className="py-4 px-6 font-semibold">
+                      {formatNumber(tx.amount)}
+                    </td>
+                    <td className="py-4 px-6 text-muted-foreground">
+                      {tx.timestamp}
+                    </td>
                     <td className="py-4 px-6">
-                      <Button variant="link" className="text-primary hover:text-primary/80 p-0 h-auto">
+                      <Button
+                        variant="link"
+                        className="text-primary hover:text-primary/80 p-0 h-auto"
+                      >
                         View Details
                       </Button>
                     </td>
