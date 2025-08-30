@@ -21,6 +21,9 @@ export default function LiveExplorer({ contractService }: LiveExplorerProps) {
   const loadTransactions = async () => {
     if (!contractService) {
       console.log('No contract service available');
+      setError(
+        'Contract service not available. Please ensure you are connected to the correct network.'
+      );
       return;
     }
 
@@ -33,36 +36,44 @@ export default function LiveExplorer({ contractService }: LiveExplorerProps) {
       console.log('Calling getTransactionHistory...');
       const allTransactions = await contractService.getTransactionHistory('');
       console.log('Transactions received:', allTransactions);
-      setTransactions(allTransactions);
-    } catch (err) {
+
+      if (allTransactions.length === 0) {
+        console.log('No transactions found in blockchain');
+        setTransactions([]);
+      } else {
+        setTransactions(allTransactions);
+      }
+    } catch (err: any) {
       console.error('Error loading transactions:', err);
-      setError('Failed to load transaction history');
+      setError(
+        `Failed to load transaction history: ${err.message || 'Unknown error'}`
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (contractService && account) {
-      console.log(
-        'Contract service and account available, loading transactions...'
-      );
+    if (contractService) {
+      console.log('Contract service available, loading transactions...');
       loadTransactions();
     } else {
-      console.log('Waiting for contract service and account:', {
+      console.log('Waiting for contract service:', {
         contractService: !!contractService,
-        account: !!account,
       });
     }
-  }, [contractService, account]);
+  }, [contractService]);
 
   const formatTimestamp = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString('en-US', {
+    // Blockchain timestamps are in seconds, convert to milliseconds for Date constructor
+    const date = new Date(timestamp * 1000);
+    return date.toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit',
     });
   };
 
@@ -143,6 +154,30 @@ export default function LiveExplorer({ contractService }: LiveExplorerProps) {
                   detailed logs about what's happening with the transaction
                   loading.
                 </p>
+                <div className="mt-2 text-xs text-blue-200">
+                  <p>
+                    Contract Service:{' '}
+                    {contractService ? 'Available' : 'Not Available'}
+                  </p>
+                  <p>
+                    Network: {contractService ? 'Connected' : 'Not Connected'}
+                  </p>
+                  <p>Last Load: {new Date().toLocaleTimeString()}</p>
+                </div>
+                <Button
+                  onClick={loadTransactions}
+                  disabled={isLoading}
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                >
+                  <RefreshCw
+                    className={`w-3 h-3 mr-1 ${
+                      isLoading ? 'animate-spin' : ''
+                    }`}
+                  />
+                  Retry
+                </Button>
               </div>
             </div>
           ) : (
